@@ -7,22 +7,28 @@ FFT fft;
 Serial mySerial;
 
 final int fftsize = 256;
-final int samplerate = 16384;
+final int columns = 20;
+final int rows = 14;
+final int samplerate = 16000;
+final int smoothness = 2;
+
 final float[] frequencyWindow = {64, 76, 94, 118, 150, 185, 225, 295, 360, 420, 490, 580, 770, 880, 980, 1180, 1650, 2500, 4700, 6800, 8192};
-//final float[] frequencyWindow = {64,82,104,133,169,215,274,350,446,568,724,923,1176,1499,1911,2435,3104,3956,5043,6427,8192};
+final float[] frequencyWindowLarge = {32.0000001237939, 33.83542190879378, 35.77611785366302, 37.82812616107891, 39.99783136649053, 42.2919842027032, 44.71772260383506, 47.28259391399582, 49.99457836978716, 52.86211392968736, 55.89412252757326, 59.10003783206346, 62.4898345980525, 66.0740597017587, 69.86386495584732, 73.87104180672814, 78.10805802198395, 82.58809648207716, 87.32509619702914, 92.33379567569125, 97.62977878254372, 103.2295232246995, 109.1504518199742, 115.4109867055348, 122.0306066557911, 129.0299076878636, 136.4306671431965, 144.2559114446956, 152.5299877402058, 161.2786396552403, 170.5290873906534, 180.3101124144698, 190.6521470113762, 201.5873689685002, 213.1498016920699, 225.3754200664628, 238.3022623850006, 251.9705487007548, 266.4228059655872, 281.7040003467844, 297.8616771329677, 314.9461086645773, 333.0104507491911, 352.1109080483521, 372.3069089504741, 393.6612904739152, 416.2404937755339, 440.1147708730102, 465.3584032241208, 492.0499328430599, 520.2724066728755, 550.1136349743612, 581.666464535341, 615.0290675504012, 650.3052470698757, 687.604759968448, 727.0436584382416, 768.7446510689047, 812.8374846381408, 859.459347800573, 908.7552979309608, 960.8787124498358, 1015.991766035784, 1074.265935209177, 1135.882531857254, 1201.033267360575, 1269.920849076053, 1342.75961103239, 1419.776180800282, 1501.210184612273, 1587.31499292608, 1678.358508751166, 1774.624001191312, 1876.410986796613, 1984.036161467121, 2097.834385807641, 2218.159726999444, 2345.386560430513, 2479.910734511975, 2622.150802304782, 2772.549323788739, 2931.574242825682, 3099.720343101034, 3277.510787573706, 3465.498746224115, 3664.26911716483, 3874.440346468849, 4096.666352377634, 4331.638559875812, 4580.088051962842, 4842.787844315015, 5120.555290415089, 5414.254624632776, 5724.799651168521, 6053.156587226817, 6400.347069265301, 6767.451331672943, 7155.611567767526, 7566.035483569709, 8000.000055410447};
 //final float[] EQARRAY = {-2.2, -2, -1.7, -1.3, -1, -0.85, -0.4, 0.3, 0.4, 0.8, 0.85, 1.9, 1.9, 2.0, 2.1, 2.2, 2.35, 2.4, 2.45, 2.8};
-final int mindb = 10;
-final int maxdb = 80;
+final int mindb = 20;
+final int maxdb = 60;
 
 float[] spectrum = new float[fftsize];
-float[] intensityArray = new float [20];
+float[] intensityArray = new float [columns];
+
 
 void setup()
 {
+  frameRate(60);
   printArray(Serial.list());
   mySerial = new Serial(this, Serial.list()[0], 9600);
 
-  size(512, 200);
+  size(1024, 400);
   stroke(255);
 
   minim = new Minim(this);
@@ -33,25 +39,23 @@ void setup()
 void draw()
 {
   background(0);
-  fft.window(new HammingWindow());
+  fft.window(new CosineWindow());
   fft.forward(input.mix);
-  //fft.logAverages(32,2);
 
   getIntensityArray();
-  if (mySerial.available() > 0) {
-    if (mySerial.readChar() == '\n') {  //request received from arduino
-      sendIntensityArray();             //send data to arduino
-    }
-  }
+  //if (mySerial.available() > 0) {
+  //if (mySerial.readChar() == '\n') {  //request received from arduino
+  //sendIntensityArray();             //send data to arduino
+  //}
+  //}
 
-  for (int i = 0; i < intensityArray.length; i++) {
-    line((i+0.5)*(width/20), height, (i+0.5)*(width/20), height - 200*intensityArray[i]);
-    //line(i,height,i,height - fft.getBand(i)*4);
+  for (int i = 0; i < columns; i++) {
+    line((i+0.5)*(width/columns), height, (i+0.5)*(width/columns), height*(1 - intensityArray[i]));
   }
 }
 
 void getIntensityArray() {
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < columns; ++i) {
     float intensity = 16*(log(fft.calcAvg(frequencyWindow[i], frequencyWindow[i+1])));
     intensity -= mindb;
     intensity = intensity < 0.0 ? 0.0 : intensity;
@@ -59,16 +63,4 @@ void getIntensityArray() {
     intensity = intensity > 1.0 ? 1.0 : intensity;
     intensityArray[i] = intensity;
   }
-}
-
-void sendIntensityArray() {
-  String intensitystring;
-  mySerial.write('<');
-  for (int i = 0; i < 20; ++i) {
-    intensitystring = String.format("%03d", intensityArray[i]);  //padded with 0s if necessary
-    mySerial.write(intensitystring);
-    if (i != 19) {
-    }
-  }
-  mySerial.write('>');
 }
