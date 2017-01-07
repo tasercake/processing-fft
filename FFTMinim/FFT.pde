@@ -1,3 +1,23 @@
+void doFFT() {
+  fft.window(new HammingWindow());
+  fft.forward(input.mix);
+}
+
+void getIntensityArray() {
+  for (int i = 0; i < columns; ++i) {
+    float intensity = scale*(log(fft.calcAvg(frequencyWindow[i], frequencyWindow[i+1])));
+    //intensity += EQARRAY[i];
+    intensity *= EQARRAY2[i];
+    intensity -= mindb;
+    intensity /= dbRange;
+    intensity = intensity < 0.0 ? 0.0 : intensity;
+    intensity = intensity > 1.0 ? 1.0 : intensity;
+    intensityArray[i] = intensity;
+  }
+}
+
+
+// NOT IN USE
 class FFTobj {
   int mindb = 12;
   float dbRange = 2.5;
@@ -14,7 +34,7 @@ class FFTobj {
     input = minim.getLineIn(Minim.STEREO, size, smpRate);
     fft = new FFT(size, smpRate);
     wma = new WMA(30, this.intensityArray);
-    
+
     frequencyWindow = freqWind.clone();
     eq = eqArray.clone();
     mindb = minimum;
@@ -40,9 +60,7 @@ class FFTobj {
   }
 }
 
-
-
-
+//   NOT IN USE
 class WMA {
   private int dejitter;
   private float avgArray[][] = new float[columns][dejitter];
@@ -53,7 +71,7 @@ class WMA {
 
   WMA(int amt, float[] srcArray) {
     dejitter = amt;
-    source = srcArray.clone();    
+    source = srcArray.clone();
   }
 
   void movingAverage() {
@@ -62,42 +80,5 @@ class WMA {
         avgArray[i][j] = source[i];
       }
     }
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void doFFT() {
-  fft.window(new HammingWindow());
-  fft.forward(input.mix);
-}
-
-void getIntensityArray() {
-  for (int i = 0; i < columns; ++i) {
-    float intensity = scale*(log(fft.calcAvg(frequencyWindow[i], frequencyWindow[i+1])));
-    //intensity += EQARRAY[i];
-    intensity *= EQARRAY2[i];
-    intensity -= mindb;
-    intensity /= dbRange;
-    intensity = intensity < 0.0 ? 0.0 : intensity;
-    intensity = intensity > 1.0 ? 1.0 : intensity;
-    intensityArray[i] = intensity;
   }
 }
