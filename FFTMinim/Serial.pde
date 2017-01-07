@@ -9,7 +9,7 @@ void sendRGB() {
       if (mySerial.available() == 0);
       else if (mySerial.available() > 0) {
         if (mySerial.read() == '\n' || mySerial.read() == '\r') {
-          mySerial.write(ledRGB[x][y]);
+          mySerial.write(matrix.cellArray[x][y].rgb);
         }
       }
     }
